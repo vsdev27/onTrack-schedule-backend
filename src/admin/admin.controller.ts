@@ -85,7 +85,7 @@ export class AdminController {
     @Body('data') projectdata: string,
 
   ) {
-
+      console.log(projectdata)
     return await this.adminService.editProject(request, project_id, file, projectdata);
   }
 

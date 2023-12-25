@@ -18,24 +18,24 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class ProjectsheetController {
   constructor(private readonly projectsheetService: ProjectsheetService) {}
 
-  @Post('import')
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        fileName: { type: 'string' },
-        projectId: { type: 'string' },
-        isBaseFile: { type: 'boolean' },
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('file'))
-  create(
-    @UploadedFile() file,
-    @Body() createProjectsheetDto: CreateProjectsheetDto,
-  ) {
-    return this.projectsheetService.create(createProjectsheetDto);
-  }
+  // @Post('import')
+  // @ApiConsumes('multipart/form-data')
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: {
+  //       fileName: { type: 'string' },
+  //       projectId: { type: 'string' },
+  //       isBaseFile: { type: 'boolean' },
+  //       file: { type: 'string', format: 'binary' },
+  //     },
+  //   },
+  // })
+  // @UseInterceptors(FileInterceptor('file'))
+  // create(
+  //   @UploadedFile() file,
+  //   @Body() createProjectsheetDto: CreateProjectsheetDto,
+  // ) {
+  //   return this.projectsheetService.create(createProjectsheetDto);
+  // }
 }

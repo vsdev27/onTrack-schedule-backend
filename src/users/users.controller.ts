@@ -27,7 +27,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Post('admin/create')
   async createUser(
-    @Body() userdata,
+    @Body() userdata:CreateUserDto,
   ) {
    // console.log("sad",userdata)
     return await this.userService.create(userdata);
@@ -86,6 +86,36 @@ export class UsersController {
 
   ) {
     return await this.userService.findbyProject(page,limit,project_id);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get('supervisors')
+  async getallSupervisors (
+
+  ) {
+    return await this.userService.getallSupervisors();
+  }
+
+
+  
+  @UseGuards(JwtAuthGuard)
+  @Get('projects')
+  async getuserProject(
+    @Req() req,
+
+  ) {
+    return await this.userService.getuserProject(req);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get('work-order/:project_id')
+  async get(
+    @Param('project_id') project_id: string
+
+  ) {
+    return await this.userService.getProjectoder(project_id);
   }
 
 

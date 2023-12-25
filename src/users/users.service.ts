@@ -4,12 +4,21 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
+import * as path from 'path';
+import axios from 'axios';
+import * as xlsx from 'xlsx';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ProjectSupervisor, ProjectSupervisorDocument } from 'src/admin/entities/project-supervisor.entity';
+import { Project, ProjectDocument } from 'src/project/entities/project.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Project.name) private projectModel: Model<ProjectDocument>,
+    @InjectModel(ProjectSupervisor.name) private projectsupModel: Model<ProjectSupervisorDocument>,
+
     private jwtService: JwtService,
   ) {}
 
@@ -49,7 +58,7 @@ export class UsersService {
 
       let skip = (page - 1) * limit;
 
-      let query = this.userModel.find()
+      let query = this.userModel.find({username: { $ne: 'admin' } })
 
       if (search) {
         query.or([
@@ -59,7 +68,7 @@ export class UsersService {
       }
 
       let findAll = await query.skip(skip).limit(limit).sort({ createdAt: -1 }).exec();
-      let totalCount = await this.userModel.countDocuments({});
+      let totalCount = await this.userModel.countDocuments({username: { $ne: 'admin' } });
 
       return {
         statusCode: 200,
@@ -156,7 +165,7 @@ export class UsersService {
 
   async findbyProject(page,limit,project_id) {
     try {
-
+      console.log("s",project_id)
       let skip = (page - 1) * limit;
 
       let finduser = await this.userModel.find({ projects: project_id }).skip(skip).limit(limit).sort({ createdAt: -1 }).exec()
@@ -176,10 +185,115 @@ export class UsersService {
     }
   }
 
+async getallSupervisors(){
+  try {
+
+    let findsup= await this.projectsupModel.find()
+
+    
+    return {
+      statusCode: 200,
+      data: findsup,
+
+    }
+  }
+
+  catch (error) {
+    console.log('Error:', error);
+    throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+  }
+}
+
+  async getuserProject(req) {
+    try {
+
+      let userdata= await this.getUserFromToken(req)
+
+      if(userdata.projects && userdata.projects.length>0){
+
+        const projectIds = userdata.projects
+
+        const projects = await this.projectModel.find({ _id: { $in: projectIds } }).exec();
+
+        return{
+          statusCode: HttpStatus.OK,
+          data:projects,
+        message: 'Get projects successfully'
+        }
+
+      }
 
 
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'No projects found ',
+      }
+    }
+
+    catch (error) {
+      console.log('Error:', error);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 
 
+  async getProjectoder(projectId) {
+
+      // Work Order Number
+     // Operation Number
+    // Activity Name
+
+    try {
+      const project = await this.projectModel.findById(projectId);
+
+      if (!project) {
+        return {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Project not found',
+        };
+      }
+
+      const response = await axios.get(project.projectfile_link, { responseType: 'arraybuffer' });
+
+      let uploadDir = path.join(process.cwd(), 'uploads/excelfile');
+
+      const random4DigitNumber = Math.floor(1000 + Math.random() * 9000);
+      const filename = `${random4DigitNumber}_temp.xlsx`;
+
+      let filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, response.data);
+
+      const workbook = xlsx.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+
+      // const jsonData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+      const columnNames : any= xlsx.utils.sheet_to_json(worksheet, { header: 1 })[2];
+
+      const jsonData = xlsx.utils.sheet_to_json(worksheet, { header: columnNames, range: 3 });
+      
+
+      const result = jsonData
+      .filter(row => row['Project Name'] === project.name)
+      .map(row => ({
+        'Work Order Number': row['Work Order Number'],
+        'Operation Number': row['Operation Number'],
+        'Activity Name': row['Activity Name'] || '',
+      }));
+      //delete temp file
+      fs.unlinkSync(filePath);
+
+      return {
+        statusCode: 200,
+        data: result,
+        message: 'Get data Successfully',
+
+      };
+    } catch (error) {
+      console.log('Error:', error);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 
   async getUserFromToken(request) {
     let authHeader = request.headers.authorization;
